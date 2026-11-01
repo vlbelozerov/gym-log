@@ -1,0 +1,29 @@
+name: Encrypted journal backup
+on:
+  schedule:
+    - cron: "20 3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    if: vars.ENABLE_BACKUPS == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export and encrypt journals
+        run: node scripts/backup.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-journals-${{ github.run_id }}
+          path: backups/journals.enc
+          retention-days: 90
+          if-no-files-found: error
