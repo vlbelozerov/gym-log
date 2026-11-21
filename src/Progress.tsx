@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import type { AppData } from "./model";
 import { addDays, localDate, muscles } from "./model";
-import { exerciseHistory, weeks, workSets, sameWeightReps } from "./metrics";
+import { exerciseHistory, weeks, workSets, sameWeightReps, runningSummary, pullupSummary } from "./metrics";
 import { SectionTitle, Stat, Empty, number, dateLabel } from "./ui";
 export function Progress({ data }: { data: AppData }) {
   const [exerciseId, setExerciseId] = useState(data.exercises[0]?.id ?? "");
@@ -39,6 +39,9 @@ export function Progress({ data }: { data: AppData }) {
     };
   });
   const weekly = weeks(data, localDate(), 8);
+  const run28 = runningSummary(data, addDays(localDate(), -27), localDate());
+  const pullups = pullupSummary(data);
+  const recentPullups = pullups.at(-1);
   const weekMax = Math.max(
     4,
     ...weekly.map((w) => w.count),
@@ -75,6 +78,40 @@ export function Progress({ data }: { data: AppData }) {
           detail="Только завершённые занятия"
         />
       </div>
+      <section className="panel">
+        <div className="panel-heading"><h2>Бег · последние 28 дней</h2></div>
+        <div className="stats-grid">
+          <Stat label="Пробежек" value={run28.sessions} detail="Выполненных"/>
+          <Stat label="Время" value={number(run28.minutes) + " мин"} detail="Общее время"/>
+          <Stat label="Дистанция" value={number(run28.distanceKm) + " км"} detail="По фактическим записям"/>
+          <Stat label="Ср. скорость" value={run28.averageSpeedKmh === null ? "—" : number(run28.averageSpeedKmh) + " км/ч"} detail="Только при указанной дистанции"/>
+          <Stat label="Средняя тяжесть" value={run28.averageEffort === null ? "—" : number(run28.averageEffort) + "/10"} detail="По внесённым оценкам RPE"/>
+        </div>
+        {data.workouts.some(w=>w.finishedAt && w.runs?.some(r=>r.done)) && (
+          <div className="table-wrap"><table>
+            <thead><tr><th>Дата</th><th>Время</th><th>Дистанция</th><th>Тяжесть</th></tr></thead>
+            <tbody>{data.workouts.filter(w=>w.finishedAt).flatMap(w=>(w.runs??[]).filter(r=>r.done).map(r=>({date:w.date,...r})))
+              .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20).map(r=><tr key={r.id}>
+                <td>{dateLabel(r.date)}</td><td>{number(r.actualMinutes)} мин</td><td>{number(r.distanceKm)} км</td>
+                <td>{r.perceivedEffort ? r.perceivedEffort+"/10" : "—"}</td>
+              </tr>)}</tbody>
+          </table></div>
+        )}
+      </section>
+      <section className="panel">
+        <div className="panel-heading"><h2>Подтягивания на турнике</h2></div>
+        <div className="stats-grid">
+          <Stat label="Лучший подход за всё время" value={pullups.length ? Math.max(...pullups.map(p=>p.bestSet)) : "—"} detail="Повторений без противовеса"/>
+          <Stat label="Последняя тренировка" value={recentPullups ? recentPullups.bestSet : "—"} detail="Максимум за подход"/>
+          <Stat label="Общий объём" value={recentPullups ? recentPullups.totalReps : "—"} detail="Повторений в последнем занятии"/>
+        </div>
+        {pullups.length > 0 && <div className="table-wrap"><table>
+          <thead><tr><th>Дата</th><th>Лучший подход</th><th>Всего повторов</th><th>Подходы</th></tr></thead>
+          <tbody>{[...pullups].reverse().slice(0,15).map(p=><tr key={p.workoutId}>
+            <td>{dateLabel(p.date)}</td><td>{p.bestSet}</td><td>{p.totalReps}</td><td>{p.sets}</td>
+          </tr>)}</tbody>
+        </table></div>}
+      </section>
       <section className="panel">
         <div className="panel-heading">
           <h2>Ритм тренировок</h2>
