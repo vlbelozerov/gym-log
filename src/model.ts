@@ -37,6 +37,56 @@ export interface Template {
   sets: number;
   rest: number;
 }
+export type RunMode = "free" | "steady" | "run_walk" | "intervals";
+export type RunSegment = {
+  id: string;
+  kind: "run" | "walk" | "recovery";
+  basis: "time" | "distance";
+  amount: number;
+  speedKmh: number;
+  repeats: number;
+};
+export interface RunEntry {
+  mode?: RunMode;
+  segments?: RunSegment[];
+  cycles?: number;
+  id: string;
+  targetMinutes: number;
+  speedKmh: number;
+  actualMinutes: number;
+  distanceKm: number;
+  perceivedEffort?: number;
+  done: boolean;
+  note: string;
+}
+export interface PlannedStrength {
+  id: string;
+  type: "strength";
+  exercise: Exercise;
+  sets: number;
+  reps: number;
+  weight: number;
+  restSeconds: number;
+  note: string;
+}
+export interface PlannedRun {
+  id: string;
+  type: "run";
+  mode?: RunMode;
+  segments?: RunSegment[];
+  cycles?: number;
+  minutes: number;
+  speedKmh: number;
+  note: string;
+}
+export type PlannedBlock = PlannedStrength | PlannedRun;
+export interface PlannedSession {
+  id: string;
+  date: string;
+  name: string;
+  blocks: PlannedBlock[];
+  note: string;
+}
 export interface Workout {
   id: string;
   name: string;
@@ -44,6 +94,8 @@ export interface Workout {
   startedAt: string;
   finishedAt?: string;
   exercises: WorkoutExercise[];
+  runs?: RunEntry[];
+  planId?: string;
   note: string;
 }
 export interface Goal {
@@ -55,6 +107,7 @@ export interface AppData {
   schema: 1;
   exercises: Exercise[];
   templates: Template[];
+  plans?: PlannedSession[];
   workouts: Workout[];
   goals: Goal[];
   restSeconds: number;
@@ -169,6 +222,13 @@ const seed: Exercise[] = [
     loadMode: "total",
     note: "",
   },
+  { id: "rdl", name: "Румынская тяга с гантелями", muscle: "Ноги", equipment: "Гантели", loadMode: "dumbbell", note: "" },
+  { id: "dbbench", name: "Жим гантелей лёжа", muscle: "Грудь", equipment: "Гантели", loadMode: "dumbbell", note: "" },
+  { id: "plank", name: "Планка", muscle: "Пресс", equipment: "Коврик", loadMode: "bodyweight", note: "" },
+  { id: "split", name: "Сплит-присед", muscle: "Ноги", equipment: "Гантели", loadMode: "dumbbell", note: "" },
+  { id: "legcurl", name: "Сгибание ног в тренажёре", muscle: "Ноги", equipment: "Тренажёр", loadMode: "total", note: "" },
+  { id: "calves", name: "Подъёмы на носки", muscle: "Ноги", equipment: "Тренажёр", loadMode: "total", note: "" },
+  { id: "pallof", name: "Pallof press", muscle: "Пресс", equipment: "Блок", loadMode: "total", note: "" },
   {
     id: "pullup",
     name: "Подтягивания",
@@ -207,6 +267,7 @@ export function emptyData(): AppData {
       },
     ],
     workouts: [],
+    plans: [],
     goals: [{ id: "initial", week: weekStart(localDate()), count: 2 }],
     restSeconds: 90,
   };
@@ -252,6 +313,31 @@ export function createWorkout(data: AppData, template?: Template): Workout {
     }),
   };
 }
+export type WorkoutActivity = "strength" | "run" | "mixed";
+/** A running session is a first-class workout, not a gym exercise with fake sets. */
+export function createActivityWorkout(
+  data: AppData,
+  activity: WorkoutActivity,
+  template?: Template,
+): Workout {
+  const base = createWorkout(data, activity === "run" ? undefined : template);
+  if (activity === "strength") return base;
+  return {
+    ...base,
+    name: activity === "run" ? "Бег" : "Силовая + бег",
+    exercises: activity === "run" ? [] : base.exercises,
+    runs: [{
+      id: uid(),
+      mode: "free",
+      targetMinutes: 25,
+      speedKmh: 0,
+      actualMinutes: 0,
+      distanceKm: 0,
+      done: false,
+      note: "",
+    }],
+  };
+}
 export function validSet(s: SetEntry) {
   return (
     Number.isFinite(s.weight) &&
@@ -273,10 +359,51 @@ export function isAppData(value: unknown): value is AppData {
     typeof e.note === "string" &&
     muscles.includes(e.muscle) &&
     Object.hasOwn(loadLabels, e.loadMode);
+  const modes: RunMode[] = ["free", "steady", "run_walk", "intervals"];
+  const validStructure = (r: {mode?: RunMode; segments?: RunSegment[]; cycles?: number}) =>
+    (r.mode === undefined || modes.includes(r.mode)) &&
+    (r.cycles === undefined || (Number.isInteger(r.cycles) && r.cycles >= 1 && r.cycles <= 100)) &&
+    (r.segments === undefined || (Array.isArray(r.segments) &&
+      r.segments.length <= 60 && r.segments.every(s =>
+      s && typeof s.id === "string" &&
+      ["run","walk","recovery"].includes(s.kind) &&
+      ["time","distance"].includes(s.basis) &&
+      Number.isFinite(s.amount) && s.amount > 0 &&
+      s.amount <= (s.basis === "time" ? 600 : 100) &&
+      Number.isFinite(s.speedKmh) && s.speedKmh >= 0 && s.speedKmh <= 30 &&
+      Number.isInteger(s.repeats) && s.repeats >= 1 && s.repeats <= 100))) &&
+    (!["run_walk","intervals"].includes(r.mode ?? "") ||
+      (Array.isArray(r.segments) && r.segments.length > 0));
+  const isRun = (r: RunEntry) =>
+    r &&
+    typeof r.id === "string" && validStructure(r) &&
+    Number.isFinite(r.targetMinutes) && r.targetMinutes > 0 && r.targetMinutes <= 600 &&
+    Number.isFinite(r.speedKmh) && r.speedKmh >= 0 && r.speedKmh <= 30 &&
+    Number.isFinite(r.actualMinutes) && r.actualMinutes >= 0 && r.actualMinutes <= 600 &&
+    Number.isFinite(r.distanceKm) && r.distanceKm >= 0 && r.distanceKm <= 200 &&
+    typeof r.done === "boolean" &&
+    (r.perceivedEffort === undefined || (Number.isInteger(r.perceivedEffort) && r.perceivedEffort >= 1 && r.perceivedEffort <= 10)) &&
+    typeof r.note === "string";
+  const isBlock = (b: PlannedBlock) =>
+    b && typeof b.id === "string" && typeof b.note === "string" &&
+    (b.type === "run"
+      ? validStructure(b) && Number.isFinite(b.minutes) && b.minutes > 0 && b.minutes <= 600 &&
+        Number.isFinite(b.speedKmh) && b.speedKmh >= 0 && b.speedKmh <= 30
+      : b.type === "strength" && exercise(b.exercise) &&
+        Number.isInteger(b.sets) && b.sets > 0 && b.sets <= 20 &&
+        Number.isInteger(b.reps) && b.reps > 0 && b.reps <= 999 &&
+        Number.isFinite(b.weight) && b.weight >= 0 && b.weight <= 9999 &&
+        Number.isFinite(b.restSeconds) && b.restSeconds >= 0 && b.restSeconds <= 1800);
   return (
     d.schema === 1 &&
     Array.isArray(d.exercises) &&
     d.exercises.every(exercise) &&
+    (d.plans === undefined ||
+      (Array.isArray(d.plans) && d.plans.every((p) =>
+        p && typeof p.id === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(p.date) &&
+        typeof p.name === "string" && typeof p.note === "string" &&
+        Array.isArray(p.blocks) && p.blocks.every(isBlock)))) &&
     Array.isArray(d.templates) &&
     d.templates.every(
       (t) =>
@@ -311,6 +438,8 @@ export function isAppData(value: unknown): value is AppData {
         Number.isFinite(Date.parse(w.startedAt)) &&
         (!w.finishedAt || Number.isFinite(Date.parse(w.finishedAt))) &&
         typeof w.note === "string" &&
+        (w.planId === undefined || typeof w.planId === "string") &&
+        (w.runs === undefined || (Array.isArray(w.runs) && w.runs.every(isRun))) &&
         Array.isArray(w.exercises) &&
         w.exercises.every(
           (e) =>

@@ -72,3 +72,36 @@ export function sameWeightReps(sets: SetEntry[], weight: number) {
     .filter((s) => s.weight === weight)
     .reduce((n, s) => n + s.reps, 0);
 }
+
+export interface RunningSummary {
+  sessions: number;
+  minutes: number;
+  distanceKm: number;
+  averageSpeedKmh: number | null;
+  averageEffort: number | null;
+}
+export function runningSummary(data: AppData, from?: string, to?: string): RunningSummary {
+  const entries = data.workouts
+    .filter(w => Boolean(w.finishedAt) && (!from || w.date >= from) && (!to || w.date <= to))
+    .flatMap(w => (w.runs ?? []).filter(r => r.done));
+  const minutes = entries.reduce((n, r) => n + r.actualMinutes, 0);
+  const distanceKm = entries.reduce((n, r) => n + r.distanceKm, 0);
+  const rated = entries.filter(r => r.perceivedEffort !== undefined);
+  return {
+    sessions: entries.length,
+    minutes,
+    distanceKm,
+    averageSpeedKmh: minutes > 0 && distanceKm > 0 ? distanceKm / (minutes / 60) : null,
+    averageEffort: rated.length ? rated.reduce((n,r) => n + r.perceivedEffort!,0) / rated.length : null,
+  };
+}
+export function pullupSummary(data: AppData, exerciseId = "pullup") {
+  const history = exerciseHistory(data, exerciseId);
+  return history.map(h => ({
+    date: h.date,
+    workoutId: h.workoutId,
+    bestSet: Math.max(0, ...h.sets.map(s => s.reps)),
+    totalReps: h.sets.reduce((n,s) => n + s.reps, 0),
+    sets: h.sets.length,
+  }));
+}

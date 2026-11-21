@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   Activity,
   CalendarDays,
+  ClipboardList,
   ChartNoAxesCombined,
   Dumbbell,
   Settings,
@@ -27,6 +28,8 @@ import { JournalSync } from "./sync";
 import type { Snapshot, SyncView } from "./sync";
 import {
   createWorkout,
+  createActivityWorkout,
+  makeExercise,
   emptyData,
   demoData,
   uid,
@@ -35,7 +38,7 @@ import {
   isAppData,
   addDays,
 } from "./model";
-import type { AppData, Template, Workout } from "./model";
+import type { AppData, Template, Workout, WorkoutActivity } from "./model";
 import { goalAt, setCount, volume, weeks } from "./metrics";
 import {
   Logo,
@@ -50,9 +53,12 @@ import {
 import { WorkoutEditor } from "./WorkoutEditor";
 import { ExerciseLibrary, TemplateEditor } from "./Library";
 import { Progress } from "./Progress";
+import { Planner } from "./Planner";
+import { createFromPlan, nextPlanned } from "./planning";
 const initial: SyncView = { data: emptyData(), status: "loading", message: "" };
 const tabs = [
   { id: "today", label: "Сегодня", Icon: Activity },
+  { id: "plan", label: "План", Icon: ClipboardList },
   { id: "history", label: "Журнал", Icon: CalendarDays },
   { id: "progress", label: "Прогресс", Icon: ChartNoAxesCombined },
   { id: "exercises", label: "Упражнения", Icon: Dumbbell },
@@ -273,6 +279,24 @@ function Journal({
     }));
     setEditing(w.id);
   }
+  function startActivity(kind: WorkoutActivity) {
+    if (active) {
+      setEditing(active.id);
+      return;
+    }
+    const session = createActivityWorkout(
+      data, kind, kind === "run" ? undefined : data.templates[0],
+    );
+    change(d => ({...d,workouts:[...d.workouts,session]}));
+    setEditing(session.id);
+  }
+  function startPlanned(p: import("./model").PlannedSession) {
+    if (active) { setEditing(active.id); return; }
+    const w = createFromPlan(data, p);
+    w.date = localDate();
+    change(d => ({...d,workouts:[...d.workouts,w]}));
+    setEditing(w.id);
+  }
   function updateWorkout(w: Workout) {
     change((d) => ({
       ...d,
@@ -333,6 +357,10 @@ function Journal({
         "Вес",
         "Повторы",
         "Выполнен",
+        "Время бега (мин)",
+        "Дистанция (км)",
+        "План бега (мин)",
+        "Тяжесть (RPE 1–10)",
       ],
       ...finished.flatMap((w) =>
         w.exercises.flatMap((e) =>
@@ -347,9 +375,14 @@ function Journal({
             s.weight,
             s.reps,
             s.done ? "да" : "нет",
+            "", "", "", "",
           ]),
         ),
       ),
+      ...finished.flatMap(w => (w.runs ?? []).map(r => [
+        w.date,w.name,"Беговая дорожка","","кардио","","","", "",r.done ? "да" : "нет",
+        r.actualMinutes,r.distanceKm,r.targetMinutes,r.perceivedEffort ?? "",
+      ])),
     ];
     download(
       "gym-log.csv",
@@ -480,6 +513,13 @@ function Journal({
               workout={editWorkout}
               data={data}
               update={updateWorkout}
+              addExerciseToWorkout={(exercise) => change(d => ({
+                ...d,
+                exercises:[...d.exercises,exercise],
+                workouts:d.workouts.map(w=>w.id===editWorkout.id ? {
+                  ...w, exercises:[...w.exercises,makeExercise(exercise,d.workouts)]
+                }:w),
+              }))}
               close={() => setEditing(null)}
               remove={() =>
                 change((d) => ({
@@ -504,6 +544,13 @@ function Journal({
                   <span /> Твой темп. Твои результаты.
                 </span>
               </SectionTitle>
+              {nextPlanned(data) && (
+                <div className="active-session">
+                  <CalendarDays size={19}/>
+                  <span>Следующая по плану: {nextPlanned(data)!.date} · {nextPlanned(data)!.name}</span>
+                  <button className="text-button" onClick={()=>startPlanned(nextPlanned(data)!)}>Начать</button>
+                </div>
+              )}
               <div className="hero">
                 <div>
                   <span className="hero-eyebrow">
@@ -517,16 +564,25 @@ function Journal({
                       ? "Тренировка уже начата. Все внесённые подходы на месте."
                       : "Не обязательно ставить рекорд сегодня.\nДостаточно прийти и сделать свой подход."}
                   </p>
-                  <button
-                    className="lime"
-                    onClick={() =>
-                      active ? setEditing(active.id) : start(data.templates[0])
-                    }
-                  >
-                    <Play size={17} fill="currentColor" />
-                    {active ? "Продолжить тренировку" : "Начать тренировку"}
-                    <ArrowRight size={18} />
-                  </button>
+                  {active ? (
+                    <button className="lime" onClick={() => setEditing(active.id)}>
+                      <Play size={17} fill="currentColor" />
+                      Продолжить тренировку
+                      <ArrowRight size={18} />
+                    </button>
+                  ) : (
+                    <div className="activity-quick-start" aria-label="Выбери тип тренировки">
+                      <button className="lime" onClick={() => startActivity("strength")}>
+                        <Dumbbell size={17}/> Силовая
+                      </button>
+                      <button className="lime" onClick={() => startActivity("run")}>
+                        <Activity size={17}/> Бег
+                      </button>
+                      <button className="lime" onClick={() => startActivity("mixed")}>
+                        <Plus size={17}/> Силовая + бег
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="hero-art" aria-hidden="true">
                   <div className="orbit orbit-one" />
@@ -673,6 +729,8 @@ function Journal({
                 />
               )}
             </>
+          ) : tab === "plan" ? (
+            <Planner data={data} change={change} start={startPlanned} />
           ) : tab === "history" ? (
             <>
               <SectionTitle
@@ -1010,8 +1068,8 @@ function SessionRow({
       <span className="session-info">
         <strong>{w.name}</strong>
         <small>
-          {dateLabel(w.date)} · {w.exercises.length} упр. · {setCount(w)}{" "}
-          подходов{minutes > 0 ? " · " + minutes + " мин" : ""}
+          {dateLabel(w.date)} · {w.exercises.length} силовых упр. · {setCount(w)}{" "}
+          подходов{(w.runs ?? []).filter(r=>r.done).length > 0 ? " · бег " + number((w.runs ?? []).filter(r=>r.done).reduce((n,r)=>n+r.actualMinutes,0)) + " мин" : ""}{minutes > 0 ? " · занятие " + minutes + " мин" : ""}
         </small>
       </span>
       <span className="session-volume">
