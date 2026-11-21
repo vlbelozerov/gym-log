@@ -49,6 +49,7 @@ export type RunSegment = {
 export interface RunEntry {
   mode?: RunMode;
   segments?: RunSegment[];
+  cycles?: number;
   id: string;
   targetMinutes: number;
   speedKmh: number;
@@ -335,6 +336,7 @@ export function isAppData(value: unknown): value is AppData {
   const modes: RunMode[] = ["free", "steady", "run_walk", "intervals"];
   const validStructure = (r: {mode?: RunMode; segments?: RunSegment[]}) =>
     (r.mode === undefined || modes.includes(r.mode)) &&
+    (r.cycles === undefined || (Number.isInteger(r.cycles) && r.cycles >= 1 && r.cycles <= 100)) &&
     (r.segments === undefined || (Array.isArray(r.segments) &&
       r.segments.length <= 60 && r.segments.every(s =>
       s && typeof s.id === "string" &&
