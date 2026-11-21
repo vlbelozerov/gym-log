@@ -12,6 +12,7 @@ import type { AppData } from "./model";
 import { addDays, localDate, muscles } from "./model";
 import { exerciseHistory, weeks, workSets, sameWeightReps, runningSummary, pullupSummary } from "./metrics";
 import { SectionTitle, Stat, Empty, number, dateLabel } from "./ui";
+import { runModeLabels } from "./RunStructureEditor";
 export function Progress({ data }: { data: AppData }) {
   const [exerciseId, setExerciseId] = useState(data.exercises[0]?.id ?? "");
   const [metric, setMetric] = useState<"weight" | "reps" | "volume">("weight");
@@ -89,10 +90,10 @@ export function Progress({ data }: { data: AppData }) {
         </div>
         {data.workouts.some(w=>w.finishedAt && w.runs?.some(r=>r.done)) && (
           <div className="table-wrap"><table>
-            <thead><tr><th>Дата</th><th>Время</th><th>Дистанция</th><th>Тяжесть</th></tr></thead>
+            <thead><tr><th>Дата</th><th>Режим</th><th>Время</th><th>Дистанция</th><th>Тяжесть</th></tr></thead>
             <tbody>{data.workouts.filter(w=>w.finishedAt).flatMap(w=>(w.runs??[]).filter(r=>r.done).map(r=>({date:w.date,...r})))
               .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20).map(r=><tr key={r.id}>
-                <td>{dateLabel(r.date)}</td><td>{number(r.actualMinutes)} мин</td><td>{number(r.distanceKm)} км</td>
+                <td>{dateLabel(r.date)}</td><td>{runModeLabels[r.mode ?? "steady"]}</td><td>{number(r.actualMinutes)} мин</td><td>{number(r.distanceKm)} км</td>
                 <td>{r.perceivedEffort ? r.perceivedEffort+"/10" : "—"}</td>
               </tr>)}</tbody>
           </table></div>
