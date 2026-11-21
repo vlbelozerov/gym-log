@@ -37,6 +37,40 @@ export interface Template {
   sets: number;
   rest: number;
 }
+export interface RunEntry {
+  id: string;
+  targetMinutes: number;
+  speedKmh: number;
+  actualMinutes: number;
+  distanceKm: number;
+  done: boolean;
+  note: string;
+}
+export interface PlannedStrength {
+  id: string;
+  type: "strength";
+  exercise: Exercise;
+  sets: number;
+  reps: number;
+  weight: number;
+  restSeconds: number;
+  note: string;
+}
+export interface PlannedRun {
+  id: string;
+  type: "run";
+  minutes: number;
+  speedKmh: number;
+  note: string;
+}
+export type PlannedBlock = PlannedStrength | PlannedRun;
+export interface PlannedSession {
+  id: string;
+  date: string;
+  name: string;
+  blocks: PlannedBlock[];
+  note: string;
+}
 export interface Workout {
   id: string;
   name: string;
@@ -44,6 +78,8 @@ export interface Workout {
   startedAt: string;
   finishedAt?: string;
   exercises: WorkoutExercise[];
+  runs?: RunEntry[];
+  planId?: string;
   note: string;
 }
 export interface Goal {
@@ -55,6 +91,7 @@ export interface AppData {
   schema: 1;
   exercises: Exercise[];
   templates: Template[];
+  plans?: PlannedSession[];
   workouts: Workout[];
   goals: Goal[];
   restSeconds: number;
@@ -207,6 +244,7 @@ export function emptyData(): AppData {
       },
     ],
     workouts: [],
+    plans: [],
     goals: [{ id: "initial", week: weekStart(localDate()), count: 2 }],
     restSeconds: 90,
   };
@@ -273,10 +311,35 @@ export function isAppData(value: unknown): value is AppData {
     typeof e.note === "string" &&
     muscles.includes(e.muscle) &&
     Object.hasOwn(loadLabels, e.loadMode);
+  const isRun = (r: RunEntry) =>
+    r &&
+    typeof r.id === "string" &&
+    Number.isFinite(r.targetMinutes) && r.targetMinutes > 0 && r.targetMinutes <= 600 &&
+    Number.isFinite(r.speedKmh) && r.speedKmh >= 0 && r.speedKmh <= 30 &&
+    Number.isFinite(r.actualMinutes) && r.actualMinutes >= 0 && r.actualMinutes <= 600 &&
+    Number.isFinite(r.distanceKm) && r.distanceKm >= 0 && r.distanceKm <= 200 &&
+    typeof r.done === "boolean" &&
+    typeof r.note === "string";
+  const isBlock = (b: PlannedBlock) =>
+    b && typeof b.id === "string" && typeof b.note === "string" &&
+    (b.type === "run"
+      ? Number.isFinite(b.minutes) && b.minutes > 0 && b.minutes <= 600 &&
+        Number.isFinite(b.speedKmh) && b.speedKmh >= 0 && b.speedKmh <= 30
+      : b.type === "strength" && exercise(b.exercise) &&
+        Number.isInteger(b.sets) && b.sets > 0 && b.sets <= 20 &&
+        Number.isInteger(b.reps) && b.reps > 0 && b.reps <= 999 &&
+        Number.isFinite(b.weight) && b.weight >= 0 && b.weight <= 9999 &&
+        Number.isFinite(b.restSeconds) && b.restSeconds >= 0 && b.restSeconds <= 1800);
   return (
     d.schema === 1 &&
     Array.isArray(d.exercises) &&
     d.exercises.every(exercise) &&
+    (d.plans === undefined ||
+      (Array.isArray(d.plans) && d.plans.every((p) =>
+        p && typeof p.id === "string" &&
+        /^\\d{4}-\\d{2}-\\d{2}$/.test(p.date) &&
+        typeof p.name === "string" && typeof p.note === "string" &&
+        Array.isArray(p.blocks) && p.blocks.every(isBlock)))) &&
     Array.isArray(d.templates) &&
     d.templates.every(
       (t) =>
@@ -311,6 +374,8 @@ export function isAppData(value: unknown): value is AppData {
         Number.isFinite(Date.parse(w.startedAt)) &&
         (!w.finishedAt || Number.isFinite(Date.parse(w.finishedAt))) &&
         typeof w.note === "string" &&
+        (w.planId === undefined || typeof w.planId === "string") &&
+        (w.runs === undefined || (Array.isArray(w.runs) && w.runs.every(isRun))) &&
         Array.isArray(w.exercises) &&
         w.exercises.every(
           (e) =>
