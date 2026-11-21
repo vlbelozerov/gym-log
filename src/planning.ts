@@ -2,15 +2,18 @@ import { addDays, localDate, makeExercise, newSet, uid } from "./model";
 import type { AppData, PlannedSession, PlannedBlock, Workout } from "./model";
 
 const minutes = [
-  [20,25,30],[22,25,35],[25,28,38],[20,25,30],
-  [25,30,40],[28,30,45],[30,32,50],[22,25,35],
+  [25,25,30],[25,30,35],[30,30,40],[20,25,30],
+  [30,30,40],[30,35,45],[30,35,50],[20,30,35],
 ];
 function strength(d: AppData, id: string, sets: number, reps: number, weight = 0, restSeconds = 120): PlannedBlock | null {
   const exercise = d.exercises.find((e) => e.id === id);
   return exercise ? { id: uid(), type: "strength", exercise: structuredClone(exercise), sets, reps, weight, restSeconds, note: "" } : null;
 }
-function run(minutes: number): PlannedBlock {
-  return { id: uid(), type: "run", minutes, speedKmh: 6, note: "Легко, разговорный темп. Можно чередовать бег и ходьбу." };
+const intervals = ["3 мин бег / 2 мин ходьба", "4 / 2 мин", "5 / 2 мин", "3 / 2 мин",
+  "6 / 2 мин", "8 / 2 мин", "10 / 2 мин", "Легко по самочувствию"];
+function run(minutes: number, week: number): PlannedBlock {
+  return { id: uid(), type: "run", minutes, speedKmh: 6, note:
+    `Бег/ходьба: ${intervals[week]}. Бег примерно 5,5–6 км/ч, ходьба 4,5–5,2 км/ч. Главное — разговорный темп; отдельно разминка и заминка по 5 мин.` };
 }
 export function eightWeekPlan(d: AppData, start = "2026-11-23"): PlannedSession[] {
   const sessions: PlannedSession[] = [];
@@ -24,10 +27,10 @@ export function eightWeekPlan(d: AppData, start = "2026-11-23"): PlannedSession[
       strength(d, "dbbench", light ? 2 : 3, 9),
       strength(d, "row", 2, 10),
       strength(d, "plank", 2, 30),
-      run(monday),
+      run(monday,week),
     ].filter((b): b is PlannedBlock => b !== null);
     const blocksB = [
-      run(wednesday),
+      run(wednesday,week),
       strength(d, "assisted", light ? 2 : 3, light ? 6 : 8, 20, 180),
       strength(d, "split", 2, 8),
       strength(d, "shoulder", 2, 9),
@@ -38,7 +41,7 @@ export function eightWeekPlan(d: AppData, start = "2026-11-23"): PlannedSession[
     const entries: [number,string,PlannedBlock[]][] = [
       [0,"Сила A + лёгкий бег",blocksA],
       [2,"Лёгкий бег + сила B",blocksB],
-      [5,"Длительный лёгкий бег",[run(saturday)]],
+      [5,"Длительный лёгкий бег",[run(saturday,week)]],
     ];
     entries.forEach(([day,name,blocks]) =>
       sessions.push({ id: uid(), date: addDays(start, offset+day), name: `Неделя ${week+1} · ${name}`, blocks, note: light ? "Облегчённая неделя: не наращивать нагрузку." : "Не тренироваться до отказа; корректировать по самочувствию." }));
