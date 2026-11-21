@@ -344,7 +344,7 @@ export function isAppData(value: unknown): value is AppData {
     (d.plans === undefined ||
       (Array.isArray(d.plans) && d.plans.every((p) =>
         p && typeof p.id === "string" &&
-        /^\\d{4}-\\d{2}-\\d{2}$/.test(p.date) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(p.date) &&
         typeof p.name === "string" && typeof p.note === "string" &&
         Array.isArray(p.blocks) && p.blocks.every(isBlock)))) &&
     Array.isArray(d.templates) &&
