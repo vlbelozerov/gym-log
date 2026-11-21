@@ -206,6 +206,13 @@ const seed: Exercise[] = [
     loadMode: "total",
     note: "",
   },
+  { id: "rdl", name: "Румынская тяга с гантелями", muscle: "Ноги", equipment: "Гантели", loadMode: "dumbbell", note: "" },
+  { id: "dbbench", name: "Жим гантелей лёжа", muscle: "Грудь", equipment: "Гантели", loadMode: "dumbbell", note: "" },
+  { id: "plank", name: "Планка", muscle: "Пресс", equipment: "Коврик", loadMode: "bodyweight", note: "" },
+  { id: "split", name: "Сплит-присед", muscle: "Ноги", equipment: "Гантели", loadMode: "dumbbell", note: "" },
+  { id: "legcurl", name: "Сгибание ног в тренажёре", muscle: "Ноги", equipment: "Тренажёр", loadMode: "total", note: "" },
+  { id: "calves", name: "Подъёмы на носки", muscle: "Ноги", equipment: "Тренажёр", loadMode: "total", note: "" },
+  { id: "pallof", name: "Pallof press", muscle: "Пресс", equipment: "Блок", loadMode: "total", note: "" },
   {
     id: "pullup",
     name: "Подтягивания",
