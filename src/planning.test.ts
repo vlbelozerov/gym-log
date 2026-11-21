@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyData, isAppData } from "./model";
 import { createFromPlan, eightWeekPlan, nextPlanned } from "./planning";
+import { runningSummary, pullupSummary } from "./metrics";
 describe("training planner", () => {
   it("creates 24 sessions across 8 weeks with lighter fourth and eighth weeks", () => {
     const d = emptyData();
@@ -43,6 +44,33 @@ describe("training planner", () => {
     w.runs![0].distanceKm=-2;
     d.workouts=[w];
     expect(isAppData(d)).toBe(false);
+  });
+  it("summarizes completed runs and effort without including unfinished runs", () => {
+    const d=emptyData();
+    const p=eightWeekPlan(d)[0];
+    const w=createFromPlan(d,p);
+    w.finishedAt=new Date().toISOString();
+    w.runs![0].actualMinutes=30;
+    w.runs![0].distanceKm=3;
+    w.runs![0].perceivedEffort=4;
+    w.runs![0].done=true;
+    d.workouts=[w];
+    expect(runningSummary(d).sessions).toBe(1);
+    expect(runningSummary(d).averageSpeedKmh).toBe(6);
+    expect(runningSummary(d).averageEffort).toBe(4);
+    expect(isAppData(d)).toBe(true);
+    w.runs![0].perceivedEffort=11;
+    expect(isAppData(d)).toBe(false);
+  });
+  it("separates pull-up best set from training volume", () => {
+    const d=emptyData();
+    const w=createFromPlan(d,eightWeekPlan(d)[0]);
+    w.finishedAt=new Date().toISOString();
+    const p=w.exercises.find(x=>x.exercise.id==="pullup")!;
+    p.sets[0].reps=4; p.sets[1].reps=3;
+    p.sets[0].done=true; p.sets[1].done=true;
+    d.workouts=[w];
+    expect(pullupSummary(d)[0]).toMatchObject({bestSet:4,totalReps:7,sets:2});
   });
   it("finds the next scheduled session not yet started", () => {
     const d=emptyData();
