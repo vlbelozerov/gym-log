@@ -313,6 +313,31 @@ export function createWorkout(data: AppData, template?: Template): Workout {
     }),
   };
 }
+export type WorkoutActivity = "strength" | "run" | "mixed";
+/** A running session is a first-class workout, not a gym exercise with fake sets. */
+export function createActivityWorkout(
+  data: AppData,
+  activity: WorkoutActivity,
+  template?: Template,
+): Workout {
+  const base = createWorkout(data, activity === "run" ? undefined : template);
+  if (activity === "strength") return base;
+  return {
+    ...base,
+    name: activity === "run" ? "Бег" : "Силовая + бег",
+    exercises: activity === "run" ? [] : base.exercises,
+    runs: [{
+      id: uid(),
+      mode: "free",
+      targetMinutes: 25,
+      speedKmh: 0,
+      actualMinutes: 0,
+      distanceKm: 0,
+      done: false,
+      note: "",
+    }],
+  };
+}
 export function validSet(s: SetEntry) {
   return (
     Number.isFinite(s.weight) &&
