@@ -37,7 +37,18 @@ export interface Template {
   sets: number;
   rest: number;
 }
+export type RunMode = "free" | "steady" | "run_walk" | "intervals";
+export type RunSegment = {
+  id: string;
+  kind: "run" | "walk" | "recovery";
+  basis: "time" | "distance";
+  amount: number;
+  speedKmh: number;
+  repeats: number;
+};
 export interface RunEntry {
+  mode?: RunMode;
+  segments?: RunSegment[];
   id: string;
   targetMinutes: number;
   speedKmh: number;
@@ -60,6 +71,8 @@ export interface PlannedStrength {
 export interface PlannedRun {
   id: string;
   type: "run";
+  mode?: RunMode;
+  segments?: RunSegment[];
   minutes: number;
   speedKmh: number;
   note: string;
@@ -319,9 +332,23 @@ export function isAppData(value: unknown): value is AppData {
     typeof e.note === "string" &&
     muscles.includes(e.muscle) &&
     Object.hasOwn(loadLabels, e.loadMode);
+  const modes: RunMode[] = ["free", "steady", "run_walk", "intervals"];
+  const validStructure = (r: {mode?: RunMode; segments?: RunSegment[]}) =>
+    (r.mode === undefined || modes.includes(r.mode)) &&
+    (r.segments === undefined || (Array.isArray(r.segments) &&
+      r.segments.length <= 60 && r.segments.every(s =>
+      s && typeof s.id === "string" &&
+      ["run","walk","recovery"].includes(s.kind) &&
+      ["time","distance"].includes(s.basis) &&
+      Number.isFinite(s.amount) && s.amount > 0 &&
+      s.amount <= (s.basis === "time" ? 600 : 100) &&
+      Number.isFinite(s.speedKmh) && s.speedKmh >= 0 && s.speedKmh <= 30 &&
+      Number.isInteger(s.repeats) && s.repeats >= 1 && s.repeats <= 100))) &&
+    (!["run_walk","intervals"].includes(r.mode ?? "") ||
+      (Array.isArray(r.segments) && r.segments.length > 0));
   const isRun = (r: RunEntry) =>
     r &&
-    typeof r.id === "string" &&
+    typeof r.id === "string" && validStructure(r) &&
     Number.isFinite(r.targetMinutes) && r.targetMinutes > 0 && r.targetMinutes <= 600 &&
     Number.isFinite(r.speedKmh) && r.speedKmh >= 0 && r.speedKmh <= 30 &&
     Number.isFinite(r.actualMinutes) && r.actualMinutes >= 0 && r.actualMinutes <= 600 &&
@@ -332,7 +359,7 @@ export function isAppData(value: unknown): value is AppData {
   const isBlock = (b: PlannedBlock) =>
     b && typeof b.id === "string" && typeof b.note === "string" &&
     (b.type === "run"
-      ? Number.isFinite(b.minutes) && b.minutes > 0 && b.minutes <= 600 &&
+      ? validStructure(b) && Number.isFinite(b.minutes) && b.minutes > 0 && b.minutes <= 600 &&
         Number.isFinite(b.speedKmh) && b.speedKmh >= 0 && b.speedKmh <= 30
       : b.type === "strength" && exercise(b.exercise) &&
         Number.isInteger(b.sets) && b.sets > 0 && b.sets <= 20 &&
