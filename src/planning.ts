@@ -20,15 +20,20 @@ export function eightWeekPlan(d: AppData, start = "2026-11-23"): PlannedSession[
     const blocksA = [
       strength(d, "pullup", light ? 3 : 5, 3, 0, 240),
       strength(d, "legpress", 2, 9),
-      strength(d, "bench", light ? 2 : 3, 9),
+      strength(d, "rdl", 2, 9),
+      strength(d, "dbbench", light ? 2 : 3, 9),
       strength(d, "row", 2, 10),
+      strength(d, "plank", 2, 30),
       run(monday),
     ].filter((b): b is PlannedBlock => b !== null);
     const blocksB = [
       run(wednesday),
       strength(d, "assisted", light ? 2 : 3, light ? 6 : 8, 20, 180),
+      strength(d, "split", 2, 8),
       strength(d, "shoulder", 2, 9),
-      strength(d, "legpress", 2, 9),
+      strength(d, "legcurl", 2, 11),
+      strength(d, "calves", 2, 14),
+      strength(d, "pallof", 2, 10),
     ].filter((b): b is PlannedBlock => b !== null);
     const entries: [number,string,PlannedBlock[]][] = [
       [0,"Сила A + лёгкий бег",blocksA],
