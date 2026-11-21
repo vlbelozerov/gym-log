@@ -74,6 +74,7 @@ export interface PlannedRun {
   type: "run";
   mode?: RunMode;
   segments?: RunSegment[];
+  cycles?: number;
   minutes: number;
   speedKmh: number;
   note: string;
@@ -334,7 +335,7 @@ export function isAppData(value: unknown): value is AppData {
     muscles.includes(e.muscle) &&
     Object.hasOwn(loadLabels, e.loadMode);
   const modes: RunMode[] = ["free", "steady", "run_walk", "intervals"];
-  const validStructure = (r: {mode?: RunMode; segments?: RunSegment[]}) =>
+  const validStructure = (r: {mode?: RunMode; segments?: RunSegment[]; cycles?: number}) =>
     (r.mode === undefined || modes.includes(r.mode)) &&
     (r.cycles === undefined || (Number.isInteger(r.cycles) && r.cycles >= 1 && r.cycles <= 100)) &&
     (r.segments === undefined || (Array.isArray(r.segments) &&
