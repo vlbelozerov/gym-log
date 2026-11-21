@@ -8,8 +8,8 @@ import {
   Timer,
   ArrowLeft,
 } from "lucide-react";
-import type { AppData, Workout, SetEntry } from "./model";
-import { makeExercise, newSet, validSet, loadLabels } from "./model";
+import type { AppData, Workout, SetEntry, Exercise, LoadMode } from "./model";
+import { makeExercise, newSet, validSet, loadLabels, muscles, uid } from "./model";
 import { setCount, volume, exerciseHistory } from "./metrics";
 import { number, Modal } from "./ui";
 export function WorkoutEditor({
@@ -18,14 +18,18 @@ export function WorkoutEditor({
   update,
   close,
   remove,
+  addExercise,
 }: {
   workout: Workout;
   data: AppData;
   update: (w: Workout) => void;
   close: () => void;
   remove: () => void;
+  addExercise: (exercise: Exercise) => void;
 }) {
   const [picker, setPicker] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [custom, setCustom] = useState<Exercise>({id:uid(),name:"",muscle:"Спина",equipment:"",loadMode:"total",note:""});
   const [search, setSearch] = useState("");
   const [restUntil, setRestUntil] = useState(() =>
     Number(localStorage.getItem("gym-rest-" + workout.id) || 0),
@@ -60,8 +64,8 @@ export function WorkoutEditor({
     });
   }
   function finish() {
-    if (!setCount(workout)) {
-      setError("Отметь хотя бы один выполненный рабочий подход.");
+    if (!setCount(workout) && !(workout.runs ?? []).some(r => r.done)) {
+      setError("Отметь выполненный подход или пробежку.");
       return;
     }
     if (
@@ -116,7 +120,7 @@ export function WorkoutEditor({
           />
         </label>
       </div>
-      {!workout.exercises.length && (
+      {!workout.exercises.length && !(workout.runs?.length) && (
         <div className="empty">
           <p>Добавь первое упражнение из своего каталога.</p>
         </div>
@@ -324,6 +328,27 @@ export function WorkoutEditor({
           </section>
         );
       })}
+      {(workout.runs ?? []).map(run => (
+        <section className="exercise-card" key={run.id}>
+          <h2>Беговая дорожка</h2>
+          <p className="muted">План: {run.targetMinutes} мин · {run.speedKmh} км/ч</p>
+          <div className="form-columns">
+            <label>Время, мин<input type="number" min="0" max="600" step="0.5" value={run.actualMinutes}
+              onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,actualMinutes:Number(e.target.value)}:r)})}/></label>
+            <label>Расстояние, км<input type="number" min="0" max="200" step="0.01" value={run.distanceKm}
+              onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,distanceKm:Number(e.target.value)}:r)})}/></label>
+          </div>
+          <label>Заметки<input maxLength={1000} value={run.note} onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,note:e.target.value}:r)})}/></label>
+          <button className="secondary" aria-pressed={run.done} onClick={()=>{
+            if (!run.done && run.actualMinutes <= 0) {setError("Укажи фактическое время.");return;}
+            update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,done:!r.done}:r)});
+          }}>{run.done ? "✓ Пробежка выполнена" : "Отметить пробежку"}</button>
+          <button className="text-button danger" onClick={()=>update({...workout,runs:workout.runs?.filter(r=>r.id!==run.id)})}>Удалить бег</button>
+        </section>
+      ))}
+      <button className="secondary full" onClick={()=>update({...workout,runs:[...(workout.runs??[]),{
+        id:uid(),targetMinutes:25,speedKmh:6,actualMinutes:0,distanceKm:0,done:false,note:""
+      }]})}>+ Добавить бег</button>
       <button className="secondary full" onClick={() => setPicker(true)}>
         <Plus size={18} /> Добавить упражнение
       </button>
@@ -389,6 +414,7 @@ export function WorkoutEditor({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <button className="secondary full" onClick={()=>{setPicker(false);setCreating(true)}}>+ Создать новое упражнение</button>
           <div className="picker-list">
             {data.exercises
               .filter((e) =>
@@ -425,6 +451,27 @@ export function WorkoutEditor({
           </div>
         </Modal>
       )}
+      {creating && <Modal title="Новое упражнение" close={()=>setCreating(false)}>
+        <form onSubmit={e=>{
+          e.preventDefault();
+          if (!custom.name.trim()) return;
+          const exercise={...custom,name:custom.name.trim()};
+          addExercise(exercise);
+          update({...workout,exercises:[...workout.exercises,makeExercise(exercise,data.workouts)]});
+          setCreating(false);
+        }}>
+          <label>Название<input required maxLength={100} value={custom.name} onChange={e=>setCustom({...custom,name:e.target.value})}/></label>
+          <label>Группа мышц<select value={custom.muscle} onChange={e=>setCustom({...custom,muscle:e.target.value as Exercise["muscle"]})}>
+            {muscles.map(m=><option key={m}>{m}</option>)}
+          </select></label>
+          <label>Оборудование<input maxLength={100} value={custom.equipment} onChange={e=>setCustom({...custom,equipment:e.target.value})}/></label>
+          <label>Учёт нагрузки<select value={custom.loadMode} onChange={e=>setCustom({...custom,loadMode:e.target.value as LoadMode})}>
+            {Object.entries(loadLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </select></label>
+          <label>Заметка<textarea value={custom.note} maxLength={1000} onChange={e=>setCustom({...custom,note:e.target.value})}/></label>
+          <button className="primary full">Добавить в библиотеку и тренировку</button>
+        </form>
+      </Modal>}
       {deleteOpen && (
         <Modal title="Удалить тренировку?" close={() => setDeleteOpen(false)}>
           <p>Запись и все её подходы будут удалены из журнала.</p>
