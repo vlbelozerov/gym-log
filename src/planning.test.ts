@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { emptyData, isAppData } from "./model";
 import { createFromPlan, eightWeekPlan, nextPlanned } from "./planning";
 import { runningSummary, pullupSummary } from "./metrics";
+import { defaultSegments, runSummaryLabel } from "./RunStructureEditor";
 describe("training planner", () => {
   it("creates 24 sessions across 8 weeks with lighter fourth and eighth weeks", () => {
     const d = emptyData();
@@ -28,6 +29,41 @@ describe("training planner", () => {
     expect(isAppData(d)).toBe(true);
     w.exercises[0].sets[0].reps=100;
     expect((p.blocks.find(b=>b.type==="strength" && b.exercise.id==="pullup") as {reps:number}).reps).toBe(3);
+  });
+  it("preserves structured run intervals when starting a planned session", () => {
+    const d=emptyData();
+    const p=eightWeekPlan(d)[0];
+    const block=p.blocks.find(x=>x.type==="run");
+    expect(block?.type).toBe("run");
+    if(block?.type!=="run") throw Error("missing run");
+    expect(block.mode).toBe("run_walk");
+    const entry=createFromPlan(d,p).runs![0];
+    expect(entry.mode).toBe("run_walk");
+    expect(entry.cycles).toBeGreaterThan(0);
+    expect(entry.segments).toHaveLength(2);
+    entry.segments![0].amount=100;
+    expect(block.segments![0].amount).toBe(3);
+  });
+  it("supports free pace, steady speed, and time/distance intervals", () => {
+    const d=emptyData();
+    const p=eightWeekPlan(d)[0];
+    const block=p.blocks.find(x=>x.type==="run");
+    if(block?.type!=="run") throw Error("missing run");
+    block.mode="intervals";
+    block.cycles=4;
+    block.segments=defaultSegments("intervals");
+    block.segments[0].basis="distance";
+    block.segments[0].amount=0.4;
+    expect(runSummaryLabel(block)).toContain("Интервалы");
+    d.plans=[p];
+    expect(isAppData(d)).toBe(true);
+    block.cycles=0;
+    expect(isAppData(d)).toBe(false);
+    block.cycles=4;
+    block.mode="free";block.segments=[];block.speedKmh=0;
+    expect(isAppData(d)).toBe(true);
+    block.mode="steady";block.speedKmh=6;
+    expect(isAppData(d)).toBe(true);
   });
   it("accepts legacy documents without plans or cardio", () => {
     const d=emptyData();
