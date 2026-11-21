@@ -18,14 +18,14 @@ export function WorkoutEditor({
   update,
   close,
   remove,
-  addExercise,
+  addExerciseToWorkout,
 }: {
   workout: Workout;
   data: AppData;
   update: (w: Workout) => void;
   close: () => void;
   remove: () => void;
-  addExercise: (exercise: Exercise) => void;
+  addExerciseToWorkout: (exercise: Exercise) => void;
 }) {
   const [picker, setPicker] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -338,6 +338,12 @@ export function WorkoutEditor({
             <label>Расстояние, км<input type="number" min="0" max="200" step="0.01" value={run.distanceKm}
               onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,distanceKm:Number(e.target.value)}:r)})}/></label>
           </div>
+          <label>Тяжесть пробежки (RPE 1–10)
+            <select value={run.perceivedEffort ?? ""} onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,perceivedEffort:e.target.value?Number(e.target.value):undefined}:r)})}>
+              <option value="">Не указана</option>
+              {Array.from({length:10},(_,i)=><option value={i+1} key={i+1}>{i+1}</option>)}
+            </select>
+          </label>
           <label>Заметки<input maxLength={1000} value={run.note} onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,note:e.target.value}:r)})}/></label>
           <button className="secondary" aria-pressed={run.done} onClick={()=>{
             if (!run.done && run.actualMinutes <= 0) {setError("Укажи фактическое время.");return;}
@@ -456,8 +462,7 @@ export function WorkoutEditor({
           e.preventDefault();
           if (!custom.name.trim()) return;
           const exercise={...custom,name:custom.name.trim()};
-          addExercise(exercise);
-          update({...workout,exercises:[...workout.exercises,makeExercise(exercise,data.workouts)]});
+          addExerciseToWorkout(exercise);
           setCreating(false);
         }}>
           <label>Название<input required maxLength={100} value={custom.name} onChange={e=>setCustom({...custom,name:e.target.value})}/></label>
