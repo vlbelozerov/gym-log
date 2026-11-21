@@ -28,6 +28,7 @@ import { JournalSync } from "./sync";
 import type { Snapshot, SyncView } from "./sync";
 import {
   createWorkout,
+  makeExercise,
   emptyData,
   demoData,
   uid,
@@ -280,6 +281,7 @@ function Journal({
   function startPlanned(p: import("./model").PlannedSession) {
     if (active) { setEditing(active.id); return; }
     const w = createFromPlan(data, p);
+    w.date = localDate();
     change(d => ({...d,workouts:[...d.workouts,w]}));
     setEditing(w.id);
   }
@@ -490,7 +492,13 @@ function Journal({
               workout={editWorkout}
               data={data}
               update={updateWorkout}
-              addExercise={(exercise) => change(d => ({...d,exercises:[...d.exercises,exercise]}))}
+              addExerciseToWorkout={(exercise) => change(d => ({
+                ...d,
+                exercises:[...d.exercises,exercise],
+                workouts:d.workouts.map(w=>w.id===editWorkout.id ? {
+                  ...w, exercises:[...w.exercises,makeExercise(exercise,d.workouts)]
+                }:w),
+              }))}
               close={() => setEditing(null)}
               remove={() =>
                 change((d) => ({
