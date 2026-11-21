@@ -43,6 +43,7 @@ export interface RunEntry {
   speedKmh: number;
   actualMinutes: number;
   distanceKm: number;
+  perceivedEffort?: number;
   done: boolean;
   note: string;
 }
@@ -326,6 +327,7 @@ export function isAppData(value: unknown): value is AppData {
     Number.isFinite(r.actualMinutes) && r.actualMinutes >= 0 && r.actualMinutes <= 600 &&
     Number.isFinite(r.distanceKm) && r.distanceKm >= 0 && r.distanceKm <= 200 &&
     typeof r.done === "boolean" &&
+    (r.perceivedEffort === undefined || (Number.isInteger(r.perceivedEffort) && r.perceivedEffort >= 1 && r.perceivedEffort <= 10)) &&
     typeof r.note === "string";
   const isBlock = (b: PlannedBlock) =>
     b && typeof b.id === "string" && typeof b.note === "string" &&
