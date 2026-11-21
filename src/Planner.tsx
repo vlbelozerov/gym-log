@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Play } from "lucide-react";
 import type { AppData, PlannedBlock, PlannedSession } from "./model";
 import { emptyData, localDate, uid } from "./model";
 import { eightWeekPlan } from "./planning";
+import { RunStructureEditor, runSummaryLabel } from "./RunStructureEditor";
 import { Modal, SectionTitle } from "./ui";
 
 export function Planner({ data, change, start }: {
@@ -45,7 +46,7 @@ export function Planner({ data, change, start }: {
         const w = data.workouts.find(w=>w.planId===p.id);
         return <section className="planner-session" key={p.id}>
           <div><strong>{p.name}</strong><small>{p.date} · {p.blocks.length} блоков {w ? " · Начата" : ""}</small></div>
-          <div className="planner-blocks">{p.blocks.map(b=><span key={b.id}>{b.type==="run" ? `Бег · ${b.minutes} мин · ${b.speedKmh} км/ч` : `${b.exercise.name} · ${b.sets}×${b.reps}`}</span>)}</div>
+          <div className="planner-blocks">{p.blocks.map(b=><span key={b.id}>{b.type==="run" ? runSummaryLabel(b) : `${b.exercise.name} · ${b.sets}×${b.reps}`}</span>)}</div>
           <div className="inline-actions">
             <button className="text-button" onClick={()=>setEditing(structuredClone(p))}><Pencil size={15}/> Изменить</button>
             <button className="text-button" disabled={Boolean(w)} onClick={()=>start(p)}><Play size={15}/> {w?"Уже начата":"Начать"}</button>
@@ -76,9 +77,9 @@ function PlanEditor({value,data,save,close}:{
         <div className="planner-edit-head"><strong>{b.type==="run"?"Бег":b.exercise.name}</strong>
           <button type="button" className="icon-button danger" aria-label="Удалить блок" onClick={()=>setP({...p,blocks:p.blocks.filter(x=>x.id!==b.id)})}><Trash2 size={15}/></button>
         </div>
-        {b.type==="run" ? <div className="form-columns">
-          <label>Минут<input type="number" min={1} max={600} required value={b.minutes} onChange={e=>updateBlock(b.id,{minutes:Number(e.target.value)})}/></label>
-          <label>Км/ч<input type="number" min={0} max={30} step={0.1} required value={b.speedKmh} onChange={e=>updateBlock(b.id,{speedKmh:Number(e.target.value)})}/></label>
+        {b.type==="run" ? <div>
+          <RunStructureEditor mode={b.mode} segments={b.segments} cycles={b.cycles} speedKmh={b.speedKmh} onChange={patch=>updateBlock(b.id,patch)}/>
+          <label>Плановое время всего занятия, мин<input type="number" min={1} max={600} required value={b.minutes} onChange={e=>updateBlock(b.id,{minutes:Number(e.target.value)})}/></label>
         </div> : <div className="form-columns">
           <label>Подходов<input type="number" min={1} max={20} required value={b.sets} onChange={e=>updateBlock(b.id,{sets:Number(e.target.value)})}/></label>
           <label>Повторов<input type="number" min={1} max={999} required value={b.reps} onChange={e=>updateBlock(b.id,{reps:Number(e.target.value)})}/></label>
@@ -94,7 +95,7 @@ function PlanEditor({value,data,save,close}:{
         const exercise=data.exercises.find(e=>e.id===exerciseId);
         if(exercise) setP({...p,blocks:[...p.blocks,{id:uid(),type:"strength",exercise:structuredClone(exercise),sets:3,reps:10,weight:0,restSeconds:120,note:""}]});
       }}>Добавить упражнение</button></div>
-      <button type="button" className="secondary full" onClick={()=>setP({...p,blocks:[...p.blocks,{id:uid(),type:"run",minutes:25,speedKmh:6,note:"Лёгкий бег"}]})}>+ Добавить бег</button>
+      <button type="button" className="secondary full" onClick={()=>setP({...p,blocks:[...p.blocks,{id:uid(),type:"run",mode:"free",minutes:25,speedKmh:0,note:"Лёгкий бег"}]})}>+ Добавить бег</button>
       <button className="primary full" disabled={!p.blocks.length}>Сохранить план</button>
     </form>
   </Modal>;
