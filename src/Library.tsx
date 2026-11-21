@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import type { AppData, Exercise, LoadMode, Template } from "./model";
 import { muscles, uid, loadLabels } from "./model";
 import { Modal, SectionTitle } from "./ui";
+import { technique } from "./technique";
 export function ExerciseLibrary({
   data,
   change,
@@ -79,6 +80,12 @@ export function ExerciseLibrary({
               <h2>{e.name}</h2>
               <p>{e.equipment || "Без оборудования"}</p>
               <small>{loadLabels[e.loadMode]}</small>
+              {technique[e.id] && <details className="technique-guide">
+                <summary>Как выполнять</summary>
+                <ol>{technique[e.id].steps.map((step,i)=><li key={i}>{step}</li>)}</ol>
+                <strong>Частые ошибки</strong>
+                <ul>{technique[e.id].mistakes.map((mistake,i)=><li key={i}>{mistake}</li>)}</ul>
+              </details>}
               <div className="library-actions">
                 <button className="text-button" onClick={() => setEditing(e)}>
                   <Pencil size={15} /> Изменить
