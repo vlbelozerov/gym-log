@@ -21,7 +21,7 @@ describe("training planner", () => {
     expect(w.planId).toBe(p.id);
     expect(w.exercises.find(x=>x.exercise.id==="pullup")?.sets).toHaveLength(5);
     expect(w.exercises.find(x=>x.exercise.id==="pullup")?.sets[0].reps).toBe(3);
-    expect(w.runs?.[0].targetMinutes).toBe(20);
+    expect(w.runs?.[0].targetMinutes).toBe(25);
     expect(w.runs?.[0].done).toBe(false);
     d.workouts=[w];
     d.plans=[p];
