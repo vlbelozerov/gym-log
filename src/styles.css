@@ -1935,3 +1935,26 @@ dialog .full {
 .technique-guide summary{cursor:pointer;font-weight:700}
 .technique-guide ol,.technique-guide ul{padding-left:18px;margin:9px 0;line-height:1.6}
 .technique-guide strong{font-size:12px}
+
+
+/* Quick-start controls for running, strength and mixed sessions */
+.activity-quick-start {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+  max-width: 550px;
+}
+.hero .activity-quick-start .lime {
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .activity-quick-start {
+    flex-direction: column;
+    width: 100%;
+  }
+  .hero .activity-quick-start .lime {
+    width: 100%;
+  }
+}
