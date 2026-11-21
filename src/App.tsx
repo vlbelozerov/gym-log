@@ -1038,8 +1038,8 @@ function SessionRow({
       <span className="session-info">
         <strong>{w.name}</strong>
         <small>
-          {dateLabel(w.date)} · {w.exercises.length} упр. · {setCount(w)}{" "}
-          подходов{minutes > 0 ? " · " + minutes + " мин" : ""}
+          {dateLabel(w.date)} · {w.exercises.length} силовых упр. · {setCount(w)}{" "}
+          подходов{(w.runs ?? []).filter(r=>r.done).length > 0 ? " · бег " + number((w.runs ?? []).filter(r=>r.done).reduce((n,r)=>n+r.actualMinutes,0)) + " мин" : ""}{minutes > 0 ? " · занятие " + minutes + " мин" : ""}
         </small>
       </span>
       <span className="session-volume">
