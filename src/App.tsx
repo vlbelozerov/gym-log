@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   Activity,
   CalendarDays,
+  ClipboardList,
   ChartNoAxesCombined,
   Dumbbell,
   Settings,
@@ -50,9 +51,12 @@ import {
 import { WorkoutEditor } from "./WorkoutEditor";
 import { ExerciseLibrary, TemplateEditor } from "./Library";
 import { Progress } from "./Progress";
+import { Planner } from "./Planner";
+import { createFromPlan, nextPlanned } from "./planning";
 const initial: SyncView = { data: emptyData(), status: "loading", message: "" };
 const tabs = [
   { id: "today", label: "Сегодня", Icon: Activity },
+  { id: "plan", label: "План", Icon: ClipboardList },
   { id: "history", label: "Журнал", Icon: CalendarDays },
   { id: "progress", label: "Прогресс", Icon: ChartNoAxesCombined },
   { id: "exercises", label: "Упражнения", Icon: Dumbbell },
@@ -273,6 +277,12 @@ function Journal({
     }));
     setEditing(w.id);
   }
+  function startPlanned(p: import("./model").PlannedSession) {
+    if (active) { setEditing(active.id); return; }
+    const w = createFromPlan(data, p);
+    change(d => ({...d,workouts:[...d.workouts,w]}));
+    setEditing(w.id);
+  }
   function updateWorkout(w: Workout) {
     change((d) => ({
       ...d,
@@ -480,6 +490,7 @@ function Journal({
               workout={editWorkout}
               data={data}
               update={updateWorkout}
+              addExercise={(exercise) => change(d => ({...d,exercises:[...d.exercises,exercise]}))}
               close={() => setEditing(null)}
               remove={() =>
                 change((d) => ({
@@ -504,6 +515,13 @@ function Journal({
                   <span /> Твой темп. Твои результаты.
                 </span>
               </SectionTitle>
+              {nextPlanned(data) && (
+                <div className="active-session">
+                  <CalendarDays size={19}/>
+                  <span>Следующая по плану: {nextPlanned(data)!.date} · {nextPlanned(data)!.name}</span>
+                  <button className="text-button" onClick={()=>startPlanned(nextPlanned(data)!)}>Начать</button>
+                </div>
+              )}
               <div className="hero">
                 <div>
                   <span className="hero-eyebrow">
@@ -673,6 +691,8 @@ function Journal({
                 />
               )}
             </>
+          ) : tab === "plan" ? (
+            <Planner data={data} change={change} start={startPlanned} />
           ) : tab === "history" ? (
             <>
               <SectionTitle
