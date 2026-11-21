@@ -1930,3 +1930,8 @@ dialog .full {
 .planner-edit-head {display:flex;align-items:center;justify-content:space-between;gap:12px}
 .planner-session .inline-actions {display:flex;flex-wrap:wrap;gap:10px}
 @media(max-width:600px) {.planner-toolbar>* {flex:1}.planner-session{padding:14px}}
+
+.technique-guide{margin-top:12px;padding:12px;border-radius:10px;background:#eff3ec;font-size:12px}
+.technique-guide summary{cursor:pointer;font-weight:700}
+.technique-guide ol,.technique-guide ul{padding-left:18px;margin:9px 0;line-height:1.6}
+.technique-guide strong{font-size:12px}
