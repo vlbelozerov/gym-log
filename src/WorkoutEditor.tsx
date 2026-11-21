@@ -12,6 +12,7 @@ import type { AppData, Workout, SetEntry, Exercise, LoadMode } from "./model";
 import { makeExercise, newSet, validSet, loadLabels, muscles, uid } from "./model";
 import { setCount, volume, exerciseHistory } from "./metrics";
 import { number, Modal } from "./ui";
+import { RunStructureEditor, runSummaryLabel } from "./RunStructureEditor";
 export function WorkoutEditor({
   workout,
   data,
@@ -331,7 +332,12 @@ export function WorkoutEditor({
       {(workout.runs ?? []).map(run => (
         <section className="exercise-card" key={run.id}>
           <h2>Беговая дорожка</h2>
-          <p className="muted">План: {run.targetMinutes} мин · {run.speedKmh} км/ч</p>
+          <p className="muted">План: {runSummaryLabel({mode:run.mode,segments:run.segments,cycles:run.cycles,speedKmh:run.speedKmh,minutes:run.targetMinutes})}</p>
+          <RunStructureEditor mode={run.mode} segments={run.segments} cycles={run.cycles} speedKmh={run.speedKmh}
+            onChange={patch=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,...patch}:r)})}/>
+          <label>Запланированная длительность, мин
+            <input type="number" min="1" max="600" value={run.targetMinutes} onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,targetMinutes:Number(e.target.value)}:r)})}/>
+          </label>
           <div className="form-columns">
             <label>Время, мин<input type="number" min="0" max="600" step="0.5" value={run.actualMinutes}
               onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,actualMinutes:Number(e.target.value)}:r)})}/></label>
@@ -353,7 +359,7 @@ export function WorkoutEditor({
         </section>
       ))}
       <button className="secondary full" onClick={()=>update({...workout,runs:[...(workout.runs??[]),{
-        id:uid(),targetMinutes:25,speedKmh:6,actualMinutes:0,distanceKm:0,done:false,note:""
+        id:uid(),mode:"free",targetMinutes:25,speedKmh:0,actualMinutes:0,distanceKm:0,done:false,note:""
       }]})}>+ Добавить бег</button>
       <button className="secondary full" onClick={() => setPicker(true)}>
         <Plus size={18} /> Добавить упражнение
