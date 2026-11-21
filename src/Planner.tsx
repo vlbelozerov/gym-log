@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Play } from "lucide-react";
 import type { AppData, PlannedBlock, PlannedSession } from "./model";
-import { localDate, uid } from "./model";
+import { emptyData, localDate, uid } from "./model";
 import { eightWeekPlan } from "./planning";
 import { Modal, SectionTitle } from "./ui";
 
@@ -33,7 +33,11 @@ export function Planner({ data, change, start }: {
       </select>
       <button className="secondary" onClick={()=>{
         if ((data.plans??[]).length && !window.confirm("Добавить 24 занятия? Существующий план останется без изменений.")) return;
-        change(d=>({...d,plans:[...(d.plans??[]),...eightWeekPlan(d)]}));
+        change(d=>{
+          const missing = emptyData().exercises.filter(e=>!d.exercises.some(x=>x.id===e.id));
+          const withExercises = {...d,exercises:[...d.exercises,...missing]};
+          return {...withExercises,plans:[...(d.plans??[]),...eightWeekPlan(withExercises)]};
+        });
       }}>Добавить план на 8 недель</button>
     </div>
     <div className="session-list">
