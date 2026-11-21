@@ -345,6 +345,10 @@ function Journal({
         "Вес",
         "Повторы",
         "Выполнен",
+        "Время бега (мин)",
+        "Дистанция (км)",
+        "План бега (мин)",
+        "Тяжесть (RPE 1–10)",
       ],
       ...finished.flatMap((w) =>
         w.exercises.flatMap((e) =>
@@ -359,9 +363,14 @@ function Journal({
             s.weight,
             s.reps,
             s.done ? "да" : "нет",
+            "", "", "", "",
           ]),
         ),
       ),
+      ...finished.flatMap(w => (w.runs ?? []).map(r => [
+        w.date,w.name,"Беговая дорожка","","кардио","","","", "",r.done ? "да" : "нет",
+        r.actualMinutes,r.distanceKm,r.targetMinutes,r.perceivedEffort ?? "",
+      ])),
     ];
     download(
       "gym-log.csv",
