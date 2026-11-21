@@ -1,9 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { emptyData, isAppData } from "./model";
+import { emptyData, isAppData, createActivityWorkout } from "./model";
 import { createFromPlan, eightWeekPlan, nextPlanned } from "./planning";
 import { runningSummary, pullupSummary } from "./metrics";
 import { defaultSegments, runSummaryLabel } from "./RunStructureEditor";
 describe("training planner", () => {
+  it("starts running-only and combined strength/run sessions with independent cardio entries", () => {
+    const data=emptyData();
+    const run=createActivityWorkout(data,"run");
+    expect(run.name).toBe("Бег");
+    expect(run.exercises).toHaveLength(0);
+    expect(run.runs).toHaveLength(1);
+    expect(run.runs![0]).toMatchObject({mode:"free",done:false,actualMinutes:0});
+    const mixed=createActivityWorkout(data,"mixed",data.templates[0]);
+    expect(mixed.exercises.length).toBeGreaterThan(0);
+    expect(mixed.runs).toHaveLength(1);
+    expect(isAppData({...data,workouts:[run,mixed]})).toBe(true);
+    const strength=createActivityWorkout(data,"strength",data.templates[0]);
+    expect(strength.exercises.length).toBeGreaterThan(0);
+    expect(strength.runs).toBeUndefined();
+  });
+
   it("creates 24 sessions across 8 weeks with lighter fourth and eighth weeks", () => {
     const d = emptyData();
     const p = eightWeekPlan(d);
