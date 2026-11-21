@@ -49,7 +49,7 @@ export function RunStructureEditor({mode,segments,cycles,speedKmh,onChange}:{
       </label>
       {(segments??[]).map((s,i)=><div className="run-segment" key={s.id}>
         <div className="run-segment-head"><strong>Отрезок {i+1}</strong>
-          <button type="button" className="text-button danger" onClick={()=>onChange({segments:(segments??[]).filter(x=>x.id!==s.id)})}>Удалить</button>
+          <button type="button" disabled={(segments??[]).length<=1} className="text-button danger" onClick={()=>onChange({segments:(segments??[]).filter(x=>x.id!==s.id)})}>Удалить</button>
         </div>
         <div className="form-columns">
           <label>Тип
@@ -70,7 +70,7 @@ export function RunStructureEditor({mode,segments,cycles,speedKmh,onChange}:{
           </label>
         </div>
       </div>)}
-      <button type="button" className="secondary full" onClick={()=>onChange({segments:[...(segments??[]),{id:uid(),kind:"run",basis:"time",amount:1,speedKmh:0,repeats:1}]})}>+ Добавить отрезок</button>
+      <button type="button" className="secondary full" disabled={(segments??[]).length>=60} onClick={()=>onChange({segments:[...(segments??[]),{id:uid(),kind:"run",basis:"time",amount:1,speedKmh:0,repeats:1}]})}>+ Добавить отрезок</button>
       <p className="small muted">Отрезки выполняются по порядку; весь цикл повторяется указанное число раз. Для свободного темпа отрезка укажи скорость 0.</p>
     </>}
   </div>;
