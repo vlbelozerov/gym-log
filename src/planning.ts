@@ -1,5 +1,5 @@
 import { addDays, localDate, makeExercise, newSet, uid } from "./model";
-import type { AppData, PlannedSession, PlannedBlock, Workout } from "./model";
+import type { AppData, PlannedSession, PlannedBlock, Workout, RunSegment } from "./model";
 
 const minutes = [
   [25,25,30],[25,30,35],[30,30,40],[20,25,30],
@@ -11,9 +11,14 @@ function strength(d: AppData, id: string, sets: number, reps: number, weight = 0
 }
 const intervals = ["3 мин бег / 2 мин ходьба", "4 / 2 мин", "5 / 2 мин", "3 / 2 мин",
   "6 / 2 мин", "8 / 2 мин", "10 / 2 мин", "Легко по самочувствию"];
+const runMinutes=[3,4,5,3,6,8,10,3];
 function run(minutes: number, week: number): PlannedBlock {
-  return { id: uid(), type: "run", minutes, speedKmh: 6, note:
-    `Бег/ходьба: ${intervals[week]}. Бег примерно 5,5–6 км/ч, ходьба 4,5–5,2 км/ч. Главное — разговорный темп; отдельно разминка и заминка по 5 мин.` };
+  const makeSegment=(kind:RunSegment["kind"],amount:number,speedKmh:number):RunSegment =>
+    ({id:uid(),kind,basis:"time",amount,speedKmh,repeats:1});
+  return { id: uid(), type: "run",mode:"run_walk", minutes, speedKmh: 6,
+    cycles: Math.max(1,Math.floor(minutes/(runMinutes[week]+2))),
+    segments:[makeSegment("run",runMinutes[week],6),makeSegment("walk",2,5)],
+    note: `Бег/ходьба: ${intervals[week]}. Подстрой последнюю пару отрезков под общую длительность ${minutes} мин. Темп разговорный, отдельно разминка и заминка по 5 мин.` };
 }
 export function eightWeekPlan(d: AppData, start = "2026-11-23"): PlannedSession[] {
   const sessions: PlannedSession[] = [];
@@ -58,7 +63,8 @@ export function createFromPlan(data: AppData, plan: PlannedSession): Workout {
       return entry;
     }),
     runs: plan.blocks.filter((b) => b.type === "run").map((b) => ({
-      id: uid(), targetMinutes: b.minutes, speedKmh: b.speedKmh,
+      id: uid(), targetMinutes: b.minutes, speedKmh: b.speedKmh, mode:b.mode, cycles:b.cycles,
+      segments:b.segments ? structuredClone(b.segments) : undefined,
       actualMinutes: 0, distanceKm: 0, done: false, note: b.note,
     })),
   };
