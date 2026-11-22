@@ -496,7 +496,7 @@ function Journal({
           <div className="sync-banner">
             <span>Доступна новая версия приложения.</span>
             <button
-              disabled={!demo && view.status !== "saved"}
+              disabled={!demo && (sync.current?.dirty ?? true)}
               onClick={() => void updateServiceWorker(true)}
             >
               Обновить
