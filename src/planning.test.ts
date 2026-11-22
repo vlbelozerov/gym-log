@@ -1,9 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { emptyData, isAppData, createActivityWorkout } from "./model";
+import { emptyData, isAppData, createActivityWorkout, recoverAppData } from "./model";
 import { createFromPlan, eightWeekPlan, nextPlanned } from "./planning";
 import { runningSummary, pullupSummary } from "./metrics";
 import { defaultSegments, runSummaryLabel } from "./RunStructureEditor";
 describe("training planner", () => {
+  it("repairs only the known zero-cycle error without dropping workout data", () => {
+    const d=emptyData();
+    const w=createActivityWorkout(d, "run");
+    w.runs![0].mode="intervals";
+    w.runs![0].cycles=0;
+    w.runs![0].segments=defaultSegments("intervals");
+    d.workouts=[w];
+    expect(isAppData(d)).toBe(false);
+    const before=structuredClone(d);
+    const recovered=recoverAppData(d);
+    expect(recovered).not.toBeNull();
+    expect(recovered?.workouts[0].runs![0].cycles).toBe(1);
+    expect(isAppData(recovered)).toBe(true);
+    expect(d).toEqual(before);
+    expect(recovered?.workouts[0].id).toBe(w.id);
+    const corrupt=structuredClone(d);
+    corrupt.workouts[0].runs![0].targetMinutes=-5;
+    expect(recoverAppData(corrupt)).toBeNull();
+  });
   it("starts running-only and combined strength/run sessions with independent cardio entries", () => {
     const data=emptyData();
     const run=createActivityWorkout(data,"run");

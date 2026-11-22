@@ -457,6 +457,32 @@ export function isAppData(value: unknown): value is AppData {
     )
   );
 }
+/**
+ * Narrow compatibility repair for a saved run interval counter.
+ * Empty number inputs in older builds could persist cycles=0, which
+ * failed validation and locked the user out of their entire journal.
+ * Never silently change an unrelated or otherwise invalid document.
+ */
+export function recoverAppData(value: unknown): AppData | null {
+  if (isAppData(value)) return value;
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Partial<AppData>;
+  if (candidate.schema !== 1 || !Array.isArray(candidate.workouts)) return null;
+  const repaired = structuredClone(candidate) as AppData;
+  let changes = 0;
+  for (const workout of repaired.workouts) {
+    if (!workout || typeof workout !== "object") return null;
+    if (workout.runs !== undefined && !Array.isArray(workout.runs)) return null;
+    for (const run of workout.runs ?? []) {
+      if (!run || typeof run !== "object") return null;
+      if ((run.mode === "intervals" || run.mode === "run_walk") && run.cycles === 0) {
+        run.cycles = 1;
+        changes++;
+      }
+    }
+  }
+  return changes > 0 && isAppData(repaired) ? repaired : null;
+}
 export function demoData(): AppData {
   const d = emptyData();
   const today = localDate();

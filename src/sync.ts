@@ -1,6 +1,6 @@
 import { get, set } from "idb-keyval";
 import type { AppData } from "./model";
-import { emptyData, isAppData, uid } from "./model";
+import { emptyData, recoverAppData, uid } from "./model";
 export interface Snapshot {
   data: AppData;
   revision: number;
@@ -69,11 +69,23 @@ export class JournalSync {
       const saved = await this.storage.get();
       if (this.stopped) return;
       if (saved) {
-        if (!isAppData(saved.data))
+        const compatible = recoverAppData(saved.data);
+        if (!compatible)
           throw new Error(
-            "Локальный журнал повреждён. Обратитесь к разработчику; кэш не перезаписан.",
+            "Локальный журнал имеет неподдерживаемый формат. Кэш не перезаписан.",
           );
-        this.cache = saved;
+        // Persist only a verified, minimal repair; mark it dirty so that
+        // an ordinary revision-checked cloud write can follow.
+        this.cache = compatible === saved.data
+          ? saved
+          : {
+              ...saved,
+              data: compatible,
+              dirty: true,
+              generation: saved.generation + 1,
+              pending: undefined,
+            };
+        if (compatible !== saved.data) await this.persist();
       }
       this.emit(this.cache.dirty ? "pending" : "loading");
       await this.flush();

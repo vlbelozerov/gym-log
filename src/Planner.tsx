@@ -4,6 +4,7 @@ import type { AppData, PlannedBlock, PlannedSession } from "./model";
 import { emptyData, localDate, uid } from "./model";
 import { eightWeekPlan } from "./planning";
 import { RunStructureEditor, runSummaryLabel } from "./RunStructureEditor";
+import { SafeNumberInput } from "./SafeNumberInput";
 import { Modal, SectionTitle } from "./ui";
 
 export function Planner({ data, change, start }: {
@@ -79,7 +80,7 @@ function PlanEditor({value,data,save,close}:{
         </div>
         {b.type==="run" ? <div>
           <RunStructureEditor mode={b.mode} segments={b.segments} cycles={b.cycles} speedKmh={b.speedKmh} onChange={patch=>updateBlock(b.id,patch)}/>
-          <label>Плановое время всего занятия, мин<input type="number" min={1} max={600} required value={b.minutes} onChange={e=>updateBlock(b.id,{minutes:Number(e.target.value)})}/></label>
+          <label>Плановое время всего занятия, мин<SafeNumberInput min={1} max={600} integer value={b.minutes} onValueChange={n=>updateBlock(b.id,{minutes:n})}/></label>
         </div> : <div className="form-columns">
           <label>Подходов<input type="number" min={1} max={20} required value={b.sets} onChange={e=>updateBlock(b.id,{sets:Number(e.target.value)})}/></label>
           <label>Повторов<input type="number" min={1} max={999} required value={b.reps} onChange={e=>updateBlock(b.id,{reps:Number(e.target.value)})}/></label>
