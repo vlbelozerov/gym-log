@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { JournalSync } from "./sync";
 import type { Cache, Snapshot, SyncView, Remote } from "./sync";
-import { emptyData } from "./model";
+import { emptyData, createActivityWorkout, isAppData } from "./model";
 const clients: JournalSync[] = [];
 afterEach(() => clients.splice(0).forEach((c) => c.stop()));
 function setup() {
@@ -50,6 +50,27 @@ function setup() {
   };
 }
 describe("durable cloud synchronization", () => {
+  it("recovers a saved zero-cycle run and uploads only the repaired document", async () => {
+    const state=setup();
+    const saved=emptyData();
+    const workout=createActivityWorkout(saved,"run");
+    workout.runs![0].mode="intervals";
+    workout.runs![0].cycles=0;
+    workout.runs![0].segments=[
+      {id:"run",kind:"run",basis:"time",amount:3,speedKmh:6,repeats:1},
+      {id:"walk",kind:"walk",basis:"time",amount:2,speedKmh:5,repeats:1},
+    ];
+    saved.workouts.push(workout);
+    state.cloud={data:structuredClone(saved),revision:10,mutationId:"old"};
+    await state.storage.set({data:saved,revision:10,dirty:false,generation:1});
+    await state.client.start();
+    expect(state.views.at(-1)?.status).toBe("saved");
+    expect(state.writes).toBe(1);
+    expect(state.cloud?.revision).toBe(11);
+    expect(state.cloud?.data.workouts[0].runs?.[0].cycles).toBe(1);
+    expect(isAppData(state.cloud?.data)).toBe(true);
+    expect(state.cloud?.data.workouts[0].exercises).toEqual(workout.exercises);
+  });
   it("initializes cloud and saves local changes", async () => {
     const s = setup();
     await s.client.start();
