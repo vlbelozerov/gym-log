@@ -1,5 +1,6 @@
 import type { RunMode, RunSegment } from "./model";
 import { uid } from "./model";
+import { SafeNumberInput } from "./SafeNumberInput";
 
 export const runModeLabels: Record<RunMode,string> = {
   free:"Свободный темп",
@@ -41,11 +42,11 @@ export function RunStructureEditor({mode,segments,cycles,speedKmh,onChange}:{
       </select>
     </label>
     {current==="steady" && <label>Целевая скорость, км/ч
-      <input type="number" min="0.1" max="30" step="0.1" value={speedKmh} onChange={e=>onChange({speedKmh:Number(e.target.value)})}/>
+      <SafeNumberInput min={0.1} max={30} step={0.1} value={speedKmh} onValueChange={n=>onChange({speedKmh:n})}/>
     </label>}
     {structured && <>
       <label>Повторить весь цикл, раз
-        <input type="number" min="1" max="100" step="1" value={cycles??1} onChange={e=>onChange({cycles:Number(e.target.value)})}/>
+        <SafeNumberInput min={1} max={100} integer value={cycles??1} onValueChange={n=>onChange({cycles:n})}/>
       </label>
       {(segments??[]).map((s,i)=><div className="run-segment" key={s.id}>
         <div className="run-segment-head"><strong>Отрезок {i+1}</strong>
@@ -63,10 +64,10 @@ export function RunStructureEditor({mode,segments,cycles,speedKmh,onChange}:{
             </select>
           </label>
           <label>{s.basis==="time"?"Минуты":"Километры"}
-            <input type="number" min="0.01" max={s.basis==="time"?600:100} step="0.1" value={s.amount} onChange={e=>onChange({segments:(segments??[]).map(x=>x.id===s.id?{...x,amount:Number(e.target.value)}:x)})}/>
+            <SafeNumberInput min={0.01} max={s.basis==="time"?600:100} step={0.1} value={s.amount} onValueChange={n=>onChange({segments:(segments??[]).map(x=>x.id===s.id?{...x,amount:n}:x)})}/>
           </label>
           <label>Скорость, км/ч (0 = свободно)
-            <input type="number" min="0" max="30" step="0.1" value={s.speedKmh} onChange={e=>onChange({segments:(segments??[]).map(x=>x.id===s.id?{...x,speedKmh:Number(e.target.value)}:x)})}/>
+            <SafeNumberInput min={0} max={30} step={0.1} value={s.speedKmh} onValueChange={n=>onChange({segments:(segments??[]).map(x=>x.id===s.id?{...x,speedKmh:n}:x)})}/>
           </label>
         </div>
       </div>)}
