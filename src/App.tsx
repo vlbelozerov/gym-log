@@ -36,6 +36,7 @@ import {
   localDate,
   weekStart,
   isAppData,
+  recoverAppData,
   addDays,
 } from "./model";
 import type { AppData, Template, Workout, WorkoutActivity } from "./model";
@@ -168,12 +169,13 @@ function Journal({
             .maybeSingle();
           if (error) throw error;
           if (!data) return null;
-          if (!isAppData(data.data))
+          const compatible = recoverAppData(data.data);
+          if (!compatible)
             throw new Error(
               "Облачный журнал имеет неподдерживаемый формат. Данные не перезаписаны.",
             );
           return {
-            data: data.data,
+            data: compatible,
             revision: data.revision,
             mutationId: data.last_mutation_id,
           } as Snapshot;
