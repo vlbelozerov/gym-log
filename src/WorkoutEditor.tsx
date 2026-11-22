@@ -13,6 +13,7 @@ import { makeExercise, newSet, validSet, loadLabels, muscles, uid } from "./mode
 import { setCount, volume, exerciseHistory } from "./metrics";
 import { number, Modal } from "./ui";
 import { RunStructureEditor, runSummaryLabel } from "./RunStructureEditor";
+import { SafeNumberInput } from "./SafeNumberInput";
 export function WorkoutEditor({
   workout,
   data,
@@ -336,7 +337,7 @@ export function WorkoutEditor({
           <RunStructureEditor mode={run.mode} segments={run.segments} cycles={run.cycles} speedKmh={run.speedKmh}
             onChange={patch=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,...patch}:r)})}/>
           <label>Запланированная длительность, мин
-            <input type="number" min="1" max="600" value={run.targetMinutes} onChange={e=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,targetMinutes:Number(e.target.value)}:r)})}/>
+            <SafeNumberInput min={1} max={600} integer value={run.targetMinutes} onValueChange={n=>update({...workout,runs:workout.runs?.map(r=>r.id===run.id?{...r,targetMinutes:n}:r)})}/>
           </label>
           <div className="form-columns">
             <label>Время, мин<input type="number" min="0" max="600" step="0.5" value={run.actualMinutes}
